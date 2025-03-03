@@ -5,7 +5,6 @@ import hopsworks
 import xgboost as xgb
 from datetime import timedelta
 import requests
-from streamlit_lottie import st_lottie
 import logging
 import plotly.express as px
 
