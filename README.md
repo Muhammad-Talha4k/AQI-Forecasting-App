@@ -4,10 +4,8 @@
 
 This project is a Machine Learning Operations (MLOps) application that predicts the Air Quality Index (AQI) for Lahore, Pakistan, using a 100% serverless stack. The app fetches real-time air quality data from the OpenWeather API, processes it, and forecasts the AQI for the next three days using a trained XGBoost model. The entire pipeline is automated using GitHub Actions, and the app is deployed using Streamlit.
 
-
-## Demo
-Watch the demo video below to see the app in action:
-[![Demo Video](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+## Live app 
+- Check out the deployed app by clicking here: (https://aqi-forecasting-app.streamlit.app/)
 
 ## Features
 
