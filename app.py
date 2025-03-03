@@ -63,6 +63,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
+HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
 # ------------------------------------------------------------------
 #                      HOPSWORKS CONNECTION
 # ------------------------------------------------------------------
