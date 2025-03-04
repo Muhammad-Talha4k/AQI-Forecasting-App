@@ -8,9 +8,8 @@ import requests
 import logging
 import plotly.express as px
 
-# Must be the first Streamlit command in your file!
-st.set_page_config(page_title="AQI App", page_icon="🌍", layout="wide")
 
+st.set_page_config(page_title="AQI App", page_icon="🌍", layout="wide")
 # ------------------------------------------------------------------
 #                           LOGGING
 # ------------------------------------------------------------------
@@ -56,7 +55,7 @@ st.markdown(
     """
     <h1 style="text-align: center;">Lahore Air Quality Forecasting App</h1>
     <h3 style="text-align: center;">
-        This app Fetches Real-Time AQI from OpenWeather API & forecasts the next three days Air Quality Index (AQI)
+        This app Fetches Real-Time pollutants & AQI data 24 times/day from OpenWeather API & forecasts the next three days Air Quality Index (AQI)
         for Lahore using a trained XGBoost model.
     </h3>
     """,
@@ -327,7 +326,7 @@ if current_aqi is not None and last_record_for_current is not None:
             align-items: center;
         " class="section">
             <div style="flex: 1;">
-                <h2 style="margin: 0;">Real Time AQI: {current_aqi} - {aqi_label}</h2>
+                <h2 style="margin: 0;">Today's AQI: {current_aqi} - {aqi_label}</h2>
                 <p style="margin: 0; font-size: 1.5rem;"><strong>{aqi_message}</strong></p>
             </div>
             <div style="text-align: right;">
