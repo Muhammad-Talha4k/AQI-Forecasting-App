@@ -10,7 +10,7 @@ This project is a Machine Learning Operations (MLOps) application that predicts 
 
 ## Features
 
-- **Real-time AQI Prediction**: Fetches real-time air quality data and forecasts the AQI for the next three days.
+- **Daily AQI Prediction**: Fetches real-time air quality data and forecasts the AQI for the next three days.
 - **Serverless Architecture**: Built using a serverless stack, including GitHub Actions for automation and Hopsworks for feature storage and model registry.
 - **Interactive Web App**: A Streamlit-based web app that displays real-time AQI, pollutant breakdown, and historical data.
 - **Automated Pipelines**: Automated feature extraction, model training, and prediction pipelines using GitHub Actions.
@@ -35,7 +35,7 @@ The workflow of this project is divided into these steps:
 
 - `Feature Pipeline`: Fetches raw weather and pollutant data from an external API, computes features, and stores them in the Hopsworks Feature Store.
 
-- `Backfill Historical Data`: Runs the feature script for a range of past dates to generate training data for the ML models.
+- `Backfill Historical Data`: Runs the feature script for a range of past dates to generate training data for the ML model.
   
 - `Fill Realtime Data`: If historical data is already filled then fetches real time data from API and updates in hopsworks feature store.
 
@@ -67,8 +67,8 @@ To run this project locally, follow these steps:
 ## Usage
 Once the app is running, you can:
 
-- **View the real-time AQI** for Lahore.
-- **See Real time pollutants breakdown** (PM2.5, PM10, NO2, SO2, CO, O3).
+- **View Daily AQI** for Lahore.
+- **View Daily pollutants breakdown** (PM2.5, PM10, NO2, SO2, CO, O3).
 - **Get a 3-day AQI forecast**.
 - **Explore historical AQI data** for the past two years.
 
