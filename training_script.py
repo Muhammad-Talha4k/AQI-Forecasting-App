@@ -90,8 +90,8 @@ def main():
 
         # Read from offline store
         logger.info("Reading feature and target data...")
-        features_df = features_fg.read(write_options={"use_spark": True})
-        targets_df = targets_fg.read(write_options={"use_spark": True})
+        features_df = features_fg.read()
+        targets_df = targets_fg.read()
 
         # Print columns of both DataFrames
         logger.info("Features DataFrame Columns: %s", features_df.columns.tolist())
