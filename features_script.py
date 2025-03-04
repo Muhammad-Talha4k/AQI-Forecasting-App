@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from hsfs.feature import Feature
 from tenacity import retry, stop_after_attempt, wait_exponential
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -148,18 +149,12 @@ def process_historical_data(raw_data):
         o3 = components.get("o3", -1)
 
         # Handle negative values for each feature
-        if pm25 < 0:
-            pm25 = 0  # Replace negative PM2.5 with 0
-        if pm10 < 0:
-            pm10 = 0  # Replace negative PM10 with 0
-        if no2 < 0:
-            no2 = 0  # Replace negative NO2 with 0
-        if so2 < 0:
-            so2 = 0  # Replace negative SO2 with 0
-        if co < 0:
-            co = 0  # Replace negative CO with 0
-        if o3 < 0:
-            o3 = 0  # Replace negative O3 with 0
+        pm25 = max(pm25, 0)
+        pm10 = max(pm10, 0)
+        no2 = max(no2, 0)
+        so2 = max(so2, 0)
+        co = max(co, 0)
+        o3 = max(o3, 0)
 
         # Create features dictionary
         features = {
@@ -201,18 +196,12 @@ def process_latest_data(raw_data):
         o3 = components.get("o3", -1)
 
         # Handle negative values for each feature
-        if pm25 < 0:
-            pm25 = 0  # Replace negative PM2.5 with 0
-        if pm10 < 0:
-            pm10 = 0  # Replace negative PM10 with 0
-        if no2 < 0:
-            no2 = 0  # Replace negative NO2 with 0
-        if so2 < 0:
-            so2 = 0  # Replace negative SO2 with 0
-        if co < 0:
-            co = 0  # Replace negative CO with 0
-        if o3 < 0:
-            o3 = 0  # Replace negative O3 with 0
+        pm25 = max(pm25, 0)
+        pm10 = max(pm10, 0)
+        no2 = max(no2, 0)
+        so2 = max(so2, 0)
+        co = max(co, 0)
+        o3 = max(o3, 0)
 
         # Create features dictionary
         features = {
@@ -325,6 +314,7 @@ def backfill_historical_data():
                     online_enabled=True,
                 )
                 time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
+
             # Build DataFrames from the aggregated lists
             features_df = pd.DataFrame(aggregated_features_list)
             target_df = pd.DataFrame(aggregated_target_list)
@@ -356,10 +346,10 @@ def backfill_historical_data():
             logger.info(features_df.head())
             logger.info("Targets DataFrame:")
             logger.info(target_df.head())
-            # Check if the feature group is empty
+            # Check if the feature group is empty and force Spark fallback for reading
             try:
-                existing_features_df = feature_group.read()
-                existing_targets_df = target_group.read()
+                existing_features_df = feature_group.read(write_options={"use_spark": True})
+                existing_targets_df = target_group.read(write_options={"use_spark": True})
                 if existing_features_df.empty or existing_targets_df.empty:
                     logger.info("Feature groups are empty. Inserting new data directly.")
                     updated_features_df = features_df
@@ -409,10 +399,10 @@ def fetch_and_process_latest_data():
         # Create DataFrames for latest data
         latest_features_df = pd.DataFrame([latest_features])
         latest_target_df = pd.DataFrame([latest_target])
-        # Append latest data to existing data (avoid duplicates)
+        # Append latest data to existing data (avoid duplicates) with Spark fallback on reading
         try:
-            existing_features_df = feature_group.read()
-            existing_targets_df = target_group.read()
+            existing_features_df = feature_group.read(write_options={"use_spark": True})
+            existing_targets_df = target_group.read(write_options={"use_spark": True})
             updated_features_df = pd.concat([existing_features_df, latest_features_df]).drop_duplicates(subset=["timestamp"])
             updated_targets_df = pd.concat([existing_targets_df, latest_target_df]).drop_duplicates(subset=["timestamp"])
         except Exception as e:
@@ -436,8 +426,9 @@ def main():
         try:
             feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
             target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
-            existing_features_df = feature_group.read()
-            existing_targets_df = target_group.read()
+            # Use Spark fallback for reading
+            existing_features_df = feature_group.read(write_options={"use_spark": True})
+            existing_targets_df = target_group.read(write_options={"use_spark": True})
             if existing_features_df.empty or existing_targets_df.empty:
                 logger.info("Historical data not found. Backfilling historical data...")
                 backfill_historical_data()
