@@ -1,3 +1,4 @@
+[![AQI Prediction Pipeline](https://github.com/Muhammad-Talha4k/AQI-Forecasting-App/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/Muhammad-Talha4k/AQI-Forecasting-App/actions/workflows/pipeline.yml)
 # Air Quality Index (AQI) Forecasting App
 
 ## Overview
@@ -5,7 +6,7 @@
 This project is a Machine Learning Operations (MLOps) application that predicts the Air Quality Index (AQI) for Lahore, Pakistan, using a 100% serverless stack. The app fetches real-time air quality data from the OpenWeather API, processes it, and forecasts the AQI for the next three days using a trained XGBoost model. The entire pipeline is automated using GitHub Actions, and the app is deployed using Streamlit.
 
 ## Live app 
-- Check out the deployed app by clicking here: (https://aqi-forecasting-app.streamlit.app/)
+- Check out the deployed app by clicking here: https://aqi-forecasting-app.streamlit.app/
 
 ## Features
 
@@ -16,12 +17,15 @@ This project is a Machine Learning Operations (MLOps) application that predicts 
 
 ## Project Structure
 ```
+├── .devcontainer/
+│ └── devcontainer.json
 ├── .github/workflows/
 │ └── Pipeline.yaml
 ├── README.md
 ├── app.py
 ├── features_script.py
 ├── training_script.py
+├── pipeline_requirements.txt
 └── requirements.txt
 ```
 
