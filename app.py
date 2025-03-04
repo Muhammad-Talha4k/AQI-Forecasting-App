@@ -52,31 +52,28 @@ st.markdown(
 #                   TITLE & BASIC DESCRIPTION
 # ------------------------------------------------------------------
 
-# Create two columns on the same row.
-col1, col2 = st.columns([0.8, 0.2])  # Adjust the ratio as needed
+col1, col2, col3 = st.columns([1, 3, 1])
 
-with col1:
+with col2:
     st.markdown(
         """
-        <h1 style="text-align: left; margin-bottom: 0;">
+        <h1 style="text-align: center; margin-bottom: 0;">
             Lahore Air Quality Forecasting App
         </h1>
-        <h3 style="text-align: left; margin-top: 0;">
-            This app Fetches Real-Time pollutants & AQI data 24 times/day from OpenWeather API 
-            & forecasts the next three days Air Quality Index (AQI) for Lahore using a trained XGBoost model.
-        </h3>
+        <h4 style="text-align: center; margin-top: 0;">
+            This app Fetches Real-Time AQI data 24 times/day from OpenWeather API & forecasts the next three days AQI for Lahore using a trained XGBoost model.
+        </h4>
         """,
         unsafe_allow_html=True
     )
 
-with col2:
-    # Add some vertical spacing so the button aligns nicely
+with col3:
     st.write("")
     st.write("")
-    if st.button("Refresh Data"):
+    if st.button("Refresh AQI Data"):
         st.cache_data.clear()
         st.cache_resource.clear()
-        st.rerun()  
+        st.rerun()
     
 OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
 HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
