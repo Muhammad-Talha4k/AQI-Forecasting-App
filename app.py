@@ -86,7 +86,7 @@ fs, mr = connect_to_hopsworks()
 # ------------------------------------------------------------------
 #                   FETCH CURRENT AQI FROM FEATURE STORE
 # ------------------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache expires after 1 hour
 def fetch_current_aqi_record():
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
@@ -246,7 +246,7 @@ def forecast_next_days(model, last_record, pollutant_cols, days=3, max_lag=3):
 # ------------------------------------------------------------------
 #                FETCH LAST RECORD FOR FORECASTING
 # ------------------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache expires after 1 hour
 def fetch_last_record():
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
