@@ -21,12 +21,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12.9"
+          python-version: "3.11.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r pipeline_requirements.txt
 
       - name: Run feature script
         env:
@@ -45,12 +45,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12.9"
+          python-version: "3.11.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r pipeline_requirements.txt
 
       - name: Run training script
         env:
