@@ -51,21 +51,29 @@ st.markdown(
 # ------------------------------------------------------------------
 #                   TITLE & BASIC DESCRIPTION
 # ------------------------------------------------------------------
-st.markdown(
-    """
-    <h1 style="text-align: center;">Lahore Air Quality Forecasting App</h1>
-    <h3 style="text-align: center;">
-        This app Fetches Real-Time pollutants & AQI data 24 times/day from OpenWeather API & forecasts the next three days Air Quality Index (AQI)
-        for Lahore using a trained XGBoost model.
-    </h3>
-    """,
-    unsafe_allow_html=True
-)
-# Refresh button to clear cache and re-run the app
-if st.button("Refresh Data"):
-    st.cache_data.clear()
-    st.cache_resource.clear()
-    st.experimental_rerun()
+
+# Use columns to place the refresh button next to the app name
+col1, col2 = st.columns([4, 1])  # Adjust the ratio as needed
+
+# Column 1: App name and description
+with col1:
+    st.markdown(
+        """
+        <h1 style="text-align: center;">Lahore Air Quality Forecasting App</h1>
+        <h3 style="text-align: center;">
+            This app fetches real-time pollutants & AQI data 24 times/day from OpenWeather API & forecasts the next three days Air Quality Index (AQI)
+            for Lahore using a trained XGBoost model.
+        </h3>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Column 2: Refresh button
+with col2:
+    if st.button("Refresh Data"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.experimental_rerun()
     
 OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
 HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
@@ -144,8 +152,7 @@ def load_model():
         logger.error(f"Error loading model: {e}")
         st.error("Failed to load the trained model. Please check the Model Registry.")
         return None
-
-
+        
 # ------------------------------------------------------------------
 #               HELPER FUNCTIONS FOR AQI LABEL/COLOR
 # ------------------------------------------------------------------
@@ -349,7 +356,7 @@ else:
 st.write("")
 st.write("")
 if last_record_for_current is not None:
-    st.subheader("Real Time Pollutants Breakdown")
+    st.subheader("Today's Pollutant Breakdown")
     pollutant_data = {
         "Pollutant": ["PM2.5", "PM10", "NO2", "SO2", "CO", "O3"],
         "Value": [
