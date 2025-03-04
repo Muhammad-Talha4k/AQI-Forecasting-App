@@ -62,7 +62,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
+# Refresh button to clear cache and re-run the app
+if st.button("Refresh Data"):
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.experimental_rerun()
+    
 OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
 HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
 # ------------------------------------------------------------------
@@ -86,7 +91,7 @@ fs, mr = connect_to_hopsworks()
 # ------------------------------------------------------------------
 #                   FETCH CURRENT AQI FROM FEATURE STORE
 # ------------------------------------------------------------------
-@st.cache_data(ttl=3600)  # Cache expires after 1 hour
+@st.cache_data(ttl=300)  # Cache expires after 5 min
 def fetch_current_aqi_record():
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
@@ -246,7 +251,7 @@ def forecast_next_days(model, last_record, pollutant_cols, days=3, max_lag=3):
 # ------------------------------------------------------------------
 #                FETCH LAST RECORD FOR FORECASTING
 # ------------------------------------------------------------------
-@st.cache_data(ttl=3600)  # Cache expires after 1 hour
+@st.cache_data(ttl=300)  # Cache expires after 5 min
 def fetch_last_record():
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
