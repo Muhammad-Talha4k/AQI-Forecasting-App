@@ -7,6 +7,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
 from datetime import timedelta
+from tenacity import retry, wait_fixed, stop_after_attempt
 import logging
 
 # Configure logging
@@ -19,6 +20,38 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Retry configuration
+RETRY_TIMEOUT = 300  # 5 minutes
+RETRY_WAIT = 10  # 10 seconds between retries
+
+@retry(stop=stop_after_delay(RETRY_TIMEOUT), wait=wait_fixed(RETRY_WAIT), retry=retry_if_exception_type(Exception))
+def connect_to_hopsworks():
+    """Retry logic for connecting to Hopsworks."""
+    logger.info("Connecting to Hopsworks...")
+    return hopsworks.login()
+
+@retry(stop=stop_after_delay(RETRY_TIMEOUT), wait=wait_fixed(RETRY_WAIT), retry=retry_if_exception_type(Exception))
+def fetch_feature_group(fs, name, version):
+    """Retry logic for fetching feature groups."""
+    logger.info("Fetching feature group: %s (version %d)...", name, version)
+    return fs.get_feature_group(name, version=version)
+
+@retry(stop=stop_after_delay(RETRY_TIMEOUT), wait=wait_fixed(RETRY_WAIT), retry=retry_if_exception_type(Exception))
+def save_model_to_registry(mr, model, metrics, description):
+    """Retry logic for saving the model to the Hopsworks Model Registry."""
+    logger.info("Saving model to Hopsworks Model Registry...")
+    local_model_dir = "aqi_model"
+    os.makedirs(local_model_dir, exist_ok=True)
+    model.save_model(f"{local_model_dir}/xgb_model.json")
+
+    model_meta = mr.python.create_model(
+        name="lahore_aqi_model",
+        metrics=metrics,
+        description=description
+    )
+    model_meta.save(local_model_dir)
+    logger.info("✅ Best model successfully saved to Hopsworks Model Registry.")
 
 def create_lag_features(df, pollutant_cols, max_lag=3):
     """
