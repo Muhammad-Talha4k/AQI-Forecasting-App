@@ -6,7 +6,7 @@ import os
 import logging
 from datetime import datetime, timedelta
 from hsfs.feature import Feature
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, stop_after_delay, wait_fixed
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -420,37 +420,44 @@ def fetch_and_process_latest_data():
             updated_features_df = latest_features_df
             updated_targets_df = latest_target_df
         # Insert updated data into the Feature Store (without overwriting)
-        feature_group.insert(updated_features_df, overwrite=False)  # Set overwrite=False
-        target_group.insert(updated_targets_df, overwrite=False)    # Set overwrite=False
+        feature_group.insert(updated_features_df, overwrite=False) 
+        target_group.insert(updated_targets_df, overwrite=False)   
         logger.info("Latest data update complete.")
     except Exception as e:
         logger.error(f"Failed to update Hopsworks: {e}")
         raise
 
-# Main function
+# Main function with retry logic for reading from Hopsworks
 def main():
-    try:
-        # Check if historical data has already been backfilled
-        project = hopsworks.login()
-        fs = project.get_feature_store()
+    @retry(stop=stop_after_delay(300), wait=wait_fixed(10))  # Retry for 5 minutes (300 seconds) with 10-second intervals
+    def check_hopsworks_data():
         try:
+            project = hopsworks.login()
+            fs = project.get_feature_store()
             feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
             target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
             existing_features_df = feature_group.read()
             existing_targets_df = target_group.read()
-            if existing_features_df.empty or existing_targets_df.empty:
-                logger.info("Historical data not found. Backfilling historical data...")
-                backfill_historical_data()
-            else:
-                logger.info("Historical data already exists. Fetching latest data...")
-                fetch_and_process_latest_data()
+            return existing_features_df, existing_targets_df
         except Exception as e:
-            logger.error(f"Error checking feature groups: {e}")
-            logger.info("Backfilling historical data...")
+            logger.error(f"Error reading from Hopsworks: {e}")
+            raise
+
+    try:
+        # Attempt to read from Hopsworks with retry logic
+        existing_features_df, existing_targets_df = check_hopsworks_data()
+
+        # Check if historical data exists
+        if existing_features_df.empty or existing_targets_df.empty:
+            logger.info("Historical data not found. Backfilling historical data...")
             backfill_historical_data()
+        else:
+            logger.info("Historical data already exists. Fetching latest data...")
+            fetch_and_process_latest_data()
     except Exception as e:
-        logger.error(f"Script failed: {e}")
-        raise
+        logger.error(f"Failed to read from Hopsworks after multiple attempts: {e}")
+        logger.info("Stopping the script.")
+        return
 
 if __name__ == "__main__":
     main()
