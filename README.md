@@ -25,7 +25,6 @@ This project is a Machine Learning Operations (MLOps) application that predicts 
 ├── app.py
 ├── features_script.py
 ├── training_script.py
-├── pipeline_requirements.txt
 └── requirements.txt
 ```
 
