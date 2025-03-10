@@ -7,7 +7,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
 from datetime import timedelta
-from tenacity import retry, wait_fixed, stop_after_attempt
+from tenacity import retry, wait_fixed, stop_after_attempt, stop_after_delay, retry_if_exception_type 
 import logging
 
 # Configure logging
