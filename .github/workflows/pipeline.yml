@@ -3,12 +3,13 @@ name: AQI Prediction Pipeline
 on:
   schedule:
     - cron: "0 * * * *"  # Runs at the start of every hour (for feature_pipeline)
-    - cron: "0 0 * * 0"  # Runs at midnight UTC on Sunday (for training_pipeline)
+    - cron: "0 0 * * 0"  # Runs at midnight on Sunday (for training_pipeline)
   workflow_dispatch:  # Allow manual triggering of the workflow
 
 jobs:
   feature_pipeline:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch'  # Run every hour or on manual trigger
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -32,15 +33,8 @@ jobs:
 
   training_pipeline:
     runs-on: ubuntu-latest
-    if: always()  # Ensures job is evaluated every time the workflow runs
+    if: github.event.schedule == '0 0 * * 0' || github.event_name == 'workflow_dispatch'  # Run only on Sunday midnight or manual trigger
     steps:
-      - name: Check if triggered by schedule or manual dispatch
-        run: |
-          if [ -z "${{ github.event.schedule }}" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
-            echo "Not triggered by schedule or manual dispatch, skipping..."
-            exit 1
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v3
 
