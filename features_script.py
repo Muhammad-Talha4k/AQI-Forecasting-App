@@ -427,35 +427,42 @@ def fetch_and_process_latest_data():
         logger.error(f"Failed to update Hopsworks: {e}")
         raise
 
-# Main function with retry logic for reading from Hopsworks
 def main():
-    @retry(stop=stop_after_delay(300), wait=wait_fixed(10))  # Retry for 5 minutes (300 seconds) with 10-second intervals
+    @retry(stop=stop_after_delay(300), wait=wait_fixed(10))
     def check_hopsworks_data():
         try:
             project = hopsworks.login()
             fs = project.get_feature_store()
-            feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
-            target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
-            existing_features_df = feature_group.read()
-            existing_targets_df = target_group.read()
-            return existing_features_df, existing_targets_df
+            try:
+                # Try to read existing feature groups
+                feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
+                target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
+                existing_features_df = feature_group.read()
+                existing_targets_df = target_group.read()
+                logger.info("Feature groups found in Hopsworks.")
+                return existing_features_df, existing_targets_df
+            except Exception:
+                # If feature groups not found, trigger backfill
+                logger.warning("Feature groups not found. Creating them and backfilling data...")
+                backfill_historical_data()
+                return pd.DataFrame(), pd.DataFrame()
         except Exception as e:
-            logger.error(f"Error reading from Hopsworks: {e}")
+            logger.error(f"Error connecting to Hopsworks: {e}")
             raise
 
     try:
-        # Attempt to read from Hopsworks with retry logic
         existing_features_df, existing_targets_df = check_hopsworks_data()
 
-        # Check if historical data exists
+        # If both groups exist but are empty, also backfill
         if existing_features_df.empty or existing_targets_df.empty:
-            logger.info("Historical data not found. Backfilling historical data...")
+            logger.info("Feature groups empty or newly created. Running backfill...")
             backfill_historical_data()
         else:
-            logger.info("Historical data already exists. Fetching latest data...")
+            logger.info("Feature groups found with data. Fetching latest data...")
             fetch_and_process_latest_data()
+
     except Exception as e:
-        logger.error(f"Failed to read from Hopsworks after multiple attempts: {e}")
+        logger.error(f"Failed after multiple attempts: {e}")
         logger.info("Stopping the script.")
         return
 
