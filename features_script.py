@@ -471,7 +471,7 @@ def main():
     
     try:
         logger.info("="*70)
-        logger.info("🚀 Starting AQI Data Pipeline")
+        logger.info("Running Feature Script...")
         logger.info("="*70)
         
         # Step 1: Connect to Hopsworks
@@ -492,11 +492,11 @@ def main():
             feature_groups_exist = False
         
         if not feature_groups_exist:
-            logger.info("\n[DECISION] Feature groups don't exist → Running BACKFILL")
+            logger.info("\n Feature groups don't exist → Running BACKFILL")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("✅ Pipeline completed: Historical data backfilled")
+            logger.info("✅ Historical data backfilled")
             return
         
         # Step 3: Try to read existing data
@@ -506,11 +506,11 @@ def main():
         
         if existing_features_df is None:
             logger.warning("\n⚠️  Could not read features after multiple attempts")
-            logger.info("[DECISION] Read failed → Running BACKFILL as recovery")
+            logger.info("Read failed → Running BACKFILL as recovery")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("✅ Pipeline completed: Recovery backfill executed")
+            logger.info("✅ Recovery backfill executed")
             return
         
         logger.info("Reading targets...")
@@ -518,11 +518,11 @@ def main():
         
         if existing_targets_df is None:
             logger.warning("\n⚠️  Could not read targets after multiple attempts")
-            logger.info("[DECISION] Read failed → Running BACKFILL as recovery")
+            logger.info("Read failed → Running BACKFILL as recovery")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("✅ Pipeline completed: Recovery backfill executed")
+            logger.info("✅ Recovery backfill executed")
             return
         
         # Step 4: Determine action based on data
@@ -533,17 +533,17 @@ def main():
         logger.info("\n[4/4] Determining next action...")
         
         if existing_features_df.empty or existing_targets_df.empty:
-            logger.info("[DECISION] Feature groups are EMPTY → Running BACKFILL")
+            logger.info(" Feature groups are EMPTY → Running BACKFILL")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("✅ Pipeline completed: Historical data backfilled")
+            logger.info("✅ Historical data backfilled in hopsworks")
         else:
-            logger.info("[DECISION] Data exists → Fetching LATEST data only")
+            logger.info(" Data exists → Fetching LATEST data only")
             logger.info("="*70)
             fetch_and_process_latest_data()
             logger.info("="*70)
-            logger.info("✅ Pipeline completed: Latest data updated")
+            logger.info("✅ Latest data updated in hopsworks")
             
     except KeyboardInterrupt:
         logger.info("\n\n⚠️  Pipeline interrupted by user")
@@ -570,3 +570,4 @@ def main():
 if __name__ == "__main__":
     main()
     logger.info("✅ Feature Script execution finished!")
+
