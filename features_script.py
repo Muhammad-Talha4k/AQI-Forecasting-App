@@ -427,45 +427,146 @@ def fetch_and_process_latest_data():
         logger.error(f"Failed to update Hopsworks: {e}")
         raise
 
+# Replace your existing main() function with this improved version
+
 def main():
-    @retry(stop=stop_after_delay(300), wait=wait_fixed(10))
-    def check_hopsworks_data():
+    """
+    Main function with robust error handling for intermittent Hopsworks issues.
+    """
+    
+    def safe_read_feature_group(feature_group, group_name, max_attempts=3):
+        """Read feature group with multiple retry strategies."""
+        
+        strategies = [
+            ("standard read", lambda: feature_group.read()),
+            ("select_all read", lambda: feature_group.select_all().read()),
+            ("pandas dataframe", lambda: feature_group.read(dataframe_type="pandas")),
+        ]
+        
+        for attempt in range(max_attempts):
+            for strategy_name, read_func in strategies:
+                try:
+                    logger.info(f"  Attempting {strategy_name} (attempt {attempt+1}/{max_attempts})...")
+                    df = read_func()
+                    logger.info(f"  ✓ Success with {strategy_name}")
+                    return df
+                except Exception as e:
+                    if "hoodie.properties" in str(e) or "errno 255" in str(e).lower():
+                        logger.warning(f"  ✗ HDFS metadata error with {strategy_name}")
+                    else:
+                        logger.warning(f"  ✗ Failed: {str(e)[:80]}")
+                    
+                    # If this is not the last strategy, try next one immediately
+                    continue
+            
+            # All strategies failed for this attempt
+            if attempt < max_attempts - 1:
+                wait_time = 30 * (attempt + 1)  # 30, 60, 90 seconds
+                logger.warning(f"  All strategies failed. Waiting {wait_time}s before retry...")
+                time.sleep(wait_time)
+        
+        # All attempts exhausted
+        logger.error(f"  ❌ Failed to read {group_name} after {max_attempts} attempts")
+        return None
+    
+    try:
+        logger.info("="*70)
+        logger.info("🚀 Starting AQI Data Pipeline")
+        logger.info("="*70)
+        
+        # Step 1: Connect to Hopsworks
+        logger.info("\n[1/4] Connecting to Hopsworks...")
+        project = hopsworks.login()
+        fs = project.get_feature_store()
+        logger.info("✓ Connected successfully")
+        
+        # Step 2: Check if feature groups exist
+        logger.info("\n[2/4] Checking for existing feature groups...")
         try:
-            project = hopsworks.login()
-            fs = project.get_feature_store()
-            try:
-                # Try to read existing feature groups
-                feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
-                target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
-                existing_features_df = feature_group.read()
-                existing_targets_df = target_group.read()
-                logger.info("Feature groups found in Hopsworks.")
-                return existing_features_df, existing_targets_df
-            except Exception:
-                # If feature groups not found, trigger backfill
-                logger.warning("Feature groups not found. Creating them and backfilling data...")
-                backfill_historical_data()
-                return pd.DataFrame(), pd.DataFrame()
+            features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
+            targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
+            logger.info("✓ Feature groups found")
+            feature_groups_exist = True
         except Exception as e:
-            logger.error(f"Error connecting to Hopsworks: {e}")
+            logger.info(f"✗ Feature groups not found: {e}")
+            feature_groups_exist = False
+        
+        if not feature_groups_exist:
+            logger.info("\n[DECISION] Feature groups don't exist → Running BACKFILL")
+            logger.info("="*70)
+            backfill_historical_data()
+            logger.info("="*70)
+            logger.info("✅ Pipeline completed: Historical data backfilled")
+            return
+        
+        # Step 3: Try to read existing data
+        logger.info("\n[3/4] Reading existing data from feature groups...")
+        logger.info("Reading features...")
+        existing_features_df = safe_read_feature_group(features_fg, "features", max_attempts=3)
+        
+        if existing_features_df is None:
+            logger.warning("\n⚠️  Could not read features after multiple attempts")
+            logger.info("[DECISION] Read failed → Running BACKFILL as recovery")
+            logger.info("="*70)
+            backfill_historical_data()
+            logger.info("="*70)
+            logger.info("✅ Pipeline completed: Recovery backfill executed")
+            return
+        
+        logger.info("Reading targets...")
+        existing_targets_df = safe_read_feature_group(targets_fg, "targets", max_attempts=3)
+        
+        if existing_targets_df is None:
+            logger.warning("\n⚠️  Could not read targets after multiple attempts")
+            logger.info("[DECISION] Read failed → Running BACKFILL as recovery")
+            logger.info("="*70)
+            backfill_historical_data()
+            logger.info("="*70)
+            logger.info("✅ Pipeline completed: Recovery backfill executed")
+            return
+        
+        # Step 4: Determine action based on data
+        logger.info(f"\n✓ Successfully read data:")
+        logger.info(f"  - Features: {len(existing_features_df)} rows")
+        logger.info(f"  - Targets:  {len(existing_targets_df)} rows")
+        
+        logger.info("\n[4/4] Determining next action...")
+        
+        if existing_features_df.empty or existing_targets_df.empty:
+            logger.info("[DECISION] Feature groups are EMPTY → Running BACKFILL")
+            logger.info("="*70)
+            backfill_historical_data()
+            logger.info("="*70)
+            logger.info("✅ Pipeline completed: Historical data backfilled")
+        else:
+            logger.info("[DECISION] Data exists → Fetching LATEST data only")
+            logger.info("="*70)
+            fetch_and_process_latest_data()
+            logger.info("="*70)
+            logger.info("✅ Pipeline completed: Latest data updated")
+            
+    except KeyboardInterrupt:
+        logger.info("\n\n⚠️  Pipeline interrupted by user")
+        raise
+        
+    except Exception as e:
+        logger.error("\n" + "="*70)
+        logger.error("❌ PIPELINE FAILED")
+        logger.error("="*70)
+        logger.error(f"Error: {str(e)}")
+        logger.exception("Full traceback:")
+        
+        # Emergency fallback
+        logger.info("\n🆘 Attempting emergency backfill as last resort...")
+        try:
+            backfill_historical_data()
+            logger.info("✓ Emergency backfill succeeded")
+        except Exception as backfill_error:
+            logger.error(f"❌ Emergency backfill also failed: {backfill_error}")
+            logger.error("Pipeline cannot recover. Manual intervention required.")
             raise
 
-    try:
-        existing_features_df, existing_targets_df = check_hopsworks_data()
-
-        # If both groups exist but are empty, also backfill
-        if existing_features_df.empty or existing_targets_df.empty:
-            logger.info("Feature groups empty or newly created. Running backfill...")
-            backfill_historical_data()
-        else:
-            logger.info("Feature groups found with data. Fetching latest data...")
-            fetch_and_process_latest_data()
-
-    except Exception as e:
-        logger.error(f"Failed after multiple attempts: {e}")
-        logger.info("Stopping the script.")
-        return
 
 if __name__ == "__main__":
     main()
-    logger.info("✅ Finished updating data in Hopsworks!")
+    logger.info("✅ Feature Script execution finished!")
