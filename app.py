@@ -232,8 +232,8 @@ with col3:
         st.rerun()
 
 # Read API keys from environment variables
-OPENWEATHERMAP_API_KEY = st.secrets("OPENWEATHERMAP_API_KEY")
-HOPSWORKS_API_KEY = st.secrets("HOPSWORKS_API_KEY")
+OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
+HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
 # ------------------------------------------------------------------
 #                      CUSTOM LOADING FUNCTION
 # ------------------------------------------------------------------
@@ -836,3 +836,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
