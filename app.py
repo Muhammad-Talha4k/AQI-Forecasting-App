@@ -9,7 +9,8 @@ import logging
 import plotly.express as px
 
 
-st.set_page_config(page_title="AQI App", page_icon="🌍", layout="wide")
+
+st.set_page_config(page_title="AQI App", page_icon="🌤️", layout="wide")
 # ------------------------------------------------------------------
 #                           LOGGING
 # ------------------------------------------------------------------
@@ -43,11 +44,166 @@ st.markdown(
     .section {
         transition: all 1s ease-in-out;
     }
+    
+    /* Hide default Streamlit spinner */
+    div[data-testid="stSpinner"] {
+        display: none !important;
+    }
+    
+    /* Custom Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.90);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .loading-container {
+        text-align: center;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* AQI-Themed Spinner Animation */
+    .custom-spinner {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 30px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Animated particles representing air pollution */
+    .custom-spinner::before,
+    .custom-spinner::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        top: 0;
+        left: 0;
+    }
+    
+    .custom-spinner::before {
+        border-top-color: #00cc44;
+        border-right-color: #00cc44;
+        animation: spin 1.5s linear infinite;
+    }
+    
+    .custom-spinner::after {
+        border-bottom-color: #C8A600;
+        border-left-color: #CC5500;
+        animation: spin 2s linear infinite reverse;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Air quality icon in center */
+    .spinner-icon {
+        position: relative;
+        z-index: 10;
+        font-size: 2.5rem;
+        line-height: 1;
+        animation: pulse 2s ease-in-out infinite;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .loading-text {
+        font-size: 1.4rem;
+        color: #00cc44;
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin: 0;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .loading-subtext {
+        font-size: 1rem;
+        color: #888;
+        margin-top: 10px;
+        font-weight: 400;
+    }
+    
+    /* Floating Refresh Button */
+    .refresh-button-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+    
+    .refresh-btn {
+        background: linear-gradient(135deg, #00cc44 0%, #00a336 100%);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 12px 24px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 15px rgba(0, 204, 68, 0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .refresh-btn:hover {
+        background: linear-gradient(135deg, #00a336 0%, #008c2e 100%);
+        box-shadow: 0 6px 20px rgba(0, 204, 68, 0.5);
+        transform: translateY(-2px);
+    }
+    
+    .refresh-btn:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 10px rgba(0, 204, 68, 0.4);
+    }
+    
+    /* Rotate icon on hover */
+    .refresh-btn:hover .refresh-icon {
+        animation: rotate 0.6s ease-in-out;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
-
 # ------------------------------------------------------------------
 #                   TITLE & BASIC DESCRIPTION
 # ------------------------------------------------------------------
@@ -60,27 +216,49 @@ with col2:
         <h1 style="text-align: center; margin-bottom: 0;">
             Lahore Air Quality Forecasting App
         </h1>
-        <h4 style="text-align: center; margin-top: 0;">
-            This app Fetches Real-Time AQI data 24 times/day from OpenWeather API & forecasts the next three days AQI for Lahore using a trained XGBoost model.
+        <h4 style="text-align: center; margin-top: 10px; color: #aaa; font-weight: 400; line-height: 1.6;">
+            Real-time air quality monitoring App. Fetches live AQI data every hour and delivers accurate 3-day forecasts using latest trained time-series forecasting model from Hopsworks.
         </h4>
         """,
         unsafe_allow_html=True
     )
-
+    
 with col3:
     st.write("")
     st.write("")
-    if st.button("Refresh AQI Data"):
+    if st.button("🔄 Refresh App", use_container_width=True):
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
-    
-OPENWEATHERMAP_API_KEY = st.secrets["OPENWEATHERMAP_API_KEY"]
-HOPSWORKS_API_KEY = st.secrets["HOPSWORKS_API_KEY"]
+
+# Read API keys from environment variables
+OPENWEATHERMAP_API_KEY = st.secrets("OPENWEATHERMAP_API_KEY")
+HOPSWORKS_API_KEY = st.secrets("HOPSWORKS_API_KEY")
+# ------------------------------------------------------------------
+#                      CUSTOM LOADING FUNCTION
+# ------------------------------------------------------------------
+def show_loading(message, subtext="Please wait..."):
+    """Display a beautiful centered loading spinner"""
+    return st.markdown(
+        f"""
+        <div class="loading-overlay">
+            <div class="loading-container">
+                <div class="custom-spinner"></div>
+                <p class="loading-text">{message}</p>
+                <p class="loading-subtext">{subtext}</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+def hide_loading():
+    """Hide the loading spinner"""
+    return st.empty()
+
 # ------------------------------------------------------------------
 #                      HOPSWORKS CONNECTION
 # ------------------------------------------------------------------
-@st.cache_resource
 def connect_to_hopsworks():
     try:
         project = hopsworks.login()
@@ -93,13 +271,10 @@ def connect_to_hopsworks():
         st.error("Failed to connect to Hopsworks. Please check your API key and connection.")
         return None, None
 
-fs, mr = connect_to_hopsworks()
-
 # ------------------------------------------------------------------
 #                   FETCH CURRENT AQI FROM FEATURE STORE
 # ------------------------------------------------------------------
-@st.cache_data(ttl=300)  # Cache expires after 5 min
-def fetch_current_aqi_record():
+def fetch_current_aqi_record(fs):
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
         targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
@@ -125,8 +300,7 @@ def fetch_current_aqi_record():
 # ------------------------------------------------------------------
 #                  LOAD TRAINED MODEL FROM MODEL REGISTRY
 # ------------------------------------------------------------------
-@st.cache_resource
-def load_model():
+def load_model(mr):
     """
     Loads the model with the highest version number named 'lahore_aqi_model' from Hopsworks.
     """
@@ -257,8 +431,7 @@ def forecast_next_days(model, last_record, pollutant_cols, days=3, max_lag=3):
 # ------------------------------------------------------------------
 #                FETCH LAST RECORD FOR FORECASTING
 # ------------------------------------------------------------------
-@st.cache_data(ttl=300)  # Cache expires after 5 min
-def fetch_last_record():
+def fetch_last_record(fs):
     try:
         features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
         targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
@@ -281,20 +454,142 @@ def fetch_last_record():
         return None
 
 # ------------------------------------------------------------------
-#               MAIN LOGIC & DATA FETCHING
+#              FETCH HISTORICAL DATA
+# ------------------------------------------------------------------
+def fetch_historical_data(fs):
+    try:
+        features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
+        targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
+        
+        features_df = features_fg.read()
+        targets_df = targets_fg.read()
+        
+        df = pd.merge(features_df, targets_df, on="timestamp", how="inner")
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        cutoff = pd.to_datetime("today") - pd.Timedelta(days=730)
+        df = df[df['timestamp'] >= cutoff]
+
+        # Group by date to get daily averages
+        df['date'] = df['timestamp'].dt.date
+        df = df.groupby('date').mean().reset_index()
+
+        # Create label & formatted date strings for custom hover
+        df["aqi_label"] = df["aqi"].apply(get_aqi_label)
+        df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%a, %b %d")
+
+        return df
+    except Exception as e:
+        logger.error(f"Error fetching historical data: {e}")
+        st.error("Failed to fetch historical data. Please check the Feature Store data.")
+        return None
+    
+# ------------------------------------------------------------------
+#               MAIN LOGIC & DATA FETCHING WITH SPINNERS
 # ------------------------------------------------------------------
 current_aqi = None
 next_three_days_pred = None
+fs = None
+mr = None
+model = None
+last_record_for_current = None
+last_record_for_forecast = None
+historical_data = None
+
+# Create placeholder for loading spinner
+loading_placeholder = st.empty()
+
+# Step 1: Connect to Hopsworks
+loading_placeholder.markdown(
+    """
+    <div class="loading-overlay">
+        <div class="loading-container">
+            <div class="custom-spinner">
+                <div class="spinner-icon">🌍</div>
+            </div>
+            <p class="loading-text">🔄 Connecting to Hopsworks</p>
+            <p class="loading-subtext">Establishing secure connection...</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+fs, mr = connect_to_hopsworks()
+loading_placeholder.empty()
 
 if fs and mr:
-    last_record_for_current = fetch_current_aqi_record()
+    # Step 2: Fetch Current AQI
+    loading_placeholder.markdown(
+        """
+        <div class="loading-overlay">
+            <div class="loading-container">
+                <div class="custom-spinner">
+                    <div class="spinner-icon">🌤️</div>
+                </div>
+                <p class="loading-text">📊 Fetching Current Data</p>
+                <p class="loading-subtext">Reading air quality measurements...</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    last_record_for_current = fetch_current_aqi_record(fs)
     if last_record_for_current is not None:
         current_aqi = last_record_for_current["aqi"]
+    loading_placeholder.empty()
     
-    model = load_model()
+    # Step 3: Load Model
+    loading_placeholder.markdown(
+        """
+        <div class="loading-overlay">
+            <div class="loading-container">
+                <div class="custom-spinner">
+                    <div class="spinner-icon">🧠</div>
+                </div>
+                <p class="loading-text">🤖 Loading Forecasting Model</p>
+                <p class="loading-subtext">Fetching latest trained model from Hopsworks...</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    model = load_model(mr)
+    loading_placeholder.empty()
+    
     if model is not None:
-        last_record_for_forecast = fetch_last_record()
+        # Step 4: Fetch data for forecasting
+        loading_placeholder.markdown(
+            """
+            <div class="loading-overlay">
+                <div class="loading-container">
+                    <div class="custom-spinner">
+                        <div class="spinner-icon">🔬</div>
+                    </div>
+                    <p class="loading-text">🔮 Preparing Forecast</p>
+                    <p class="loading-subtext">Analyzing historical patterns...</p>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        last_record_for_forecast = fetch_last_record(fs)
+        loading_placeholder.empty()
+        
         if last_record_for_forecast is not None:
+            # Step 5: Generate forecast
+            loading_placeholder.markdown(
+                """
+                <div class="loading-overlay">
+                    <div class="loading-container">
+                        <div class="custom-spinner">
+                            <div class="spinner-icon">🌤️</div>
+                        </div>
+                        <p class="loading-text">⚡ Generating Predictions</p>
+                        <p class="loading-subtext">Computing 3-day AQI forecast...</p>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
             pollutant_cols = ["pm25", "pm10", "no2", "so2", "co", "o3"]
             forecast_results = forecast_next_days(model, last_record_for_forecast, pollutant_cols, days=3, max_lag=3)
             if forecast_results is not None:
@@ -304,7 +599,25 @@ if fs and mr:
                     "pm25": pm25_vals,
                     "pm10": pm10_vals
                 }
-
+            loading_placeholder.empty()
+    
+    # Step 6: Fetch historical data
+    loading_placeholder.markdown(
+        """
+        <div class="loading-overlay">
+            <div class="loading-container">
+                <div class="custom-spinner">
+                    <div class="spinner-icon">📊</div>
+                </div>
+                <p class="loading-text">📈 Loading Historical Data</p>
+                <p class="loading-subtext">Retrieving 2-year aqi data...</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    historical_data = fetch_historical_data(fs)
+    loading_placeholder.empty()
 # ------------------------------------------------------------------
 #                       DISPLAY CURRENT AQI
 # ------------------------------------------------------------------
@@ -456,35 +769,7 @@ st.write("")
 st.write("")
 st.subheader("Lahore Historical Air Quality Data")
 st.write("")
-@st.cache_data
-def fetch_historical_data():
-    try:
-        features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
-        targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
-        
-        features_df = features_fg.read()
-        targets_df = targets_fg.read()
-        
-        df = pd.merge(features_df, targets_df, on="timestamp", how="inner")
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        cutoff = pd.to_datetime("today") - pd.Timedelta(days=730)
-        df = df[df['timestamp'] >= cutoff]
 
-        # Group by date to get daily averages
-        df['date'] = df['timestamp'].dt.date
-        df = df.groupby('date').mean().reset_index()
-
-        # Create label & formatted date strings for custom hover
-        df["aqi_label"] = df["aqi"].apply(get_aqi_label)
-        df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%a, %b %d")
-
-        return df
-    except Exception as e:
-        logger.error(f"Error fetching historical data: {e}")
-        st.error("Failed to fetch historical data. Please check the Feature Store data.")
-        return None
-
-historical_data = fetch_historical_data()
 if historical_data is not None and not historical_data.empty:
     aqi_color_map = {
         "Good": "#00cc44",
