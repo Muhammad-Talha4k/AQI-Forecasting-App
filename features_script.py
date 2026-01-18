@@ -274,11 +274,11 @@ def backfill_historical_data():
             if day_features is not None and day_target is not None:
                 aggregated_features_list.append(day_features)
                 aggregated_target_list.append(day_target)
-                logger.info(f" Valid data found for {day_str}")
+                logger.info(f"  ✓ Valid data found for {day_str}")
             else:
-                logger.warning(f"  No valid data for {day_str}, skipping.")
+                logger.warning(f"  ⊘ No valid data for {day_str}, skipping.")
         except Exception as e:
-            logger.error(f"  Error for {day_str}: {e}")
+            logger.error(f"  ⚠ Error for {day_str}: {e}")
         current_date += timedelta(days=1)
 
     if aggregated_features_list and aggregated_target_list:
@@ -286,18 +286,18 @@ def backfill_historical_data():
             project = hopsworks.login()
             fs = project.get_feature_store()
             # Ensure the feature groups exist (or create them)
-            feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
-
-            if feature_group is None:
-                logger.info("Feature group 'lahore_air_quality_features' not found. Creating it...")
+            try:
+                feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
+                logger.info("Feature group 'lahore_air_quality_features' already exists.")
+            except:
+                logger.info("Feature group 'lahore_air_quality_features' does not exist. Creating it...")
                 feature_group = fs.create_feature_group(
                     name="lahore_air_quality_features",
                     version=1,
                     primary_key=["timestamp"],
-                    event_time="timestamp",
                     description="Daily aggregated air quality data for Lahore from OpenWeatherMap",
                     features=[
-                        Feature("timestamp", type="timestamp"),
+                        Feature("timestamp", type="string"),
                         Feature("pm25", type="double"),
                         Feature("pm10", type="double"),
                         Feature("no2", type="double"),
@@ -305,44 +305,31 @@ def backfill_historical_data():
                         Feature("co", type="double"),
                         Feature("o3", type="double"),
                     ],
-                    online_enabled=True,
+                    online_enabled=False,
                 )
-                time.sleep(10)
-            else:
-                logger.info("Feature group 'lahore_air_quality_features' already exists.")
-
-            target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
-
-            if target_group is None:
-                logger.info("Feature group 'lahore_air_quality_targets' not found. Creating it...")
+                time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
+            try:
+                target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
+                logger.info("Feature group 'lahore_air_quality_targets' already exists.")
+            except:
+                logger.info("Feature group 'lahore_air_quality_targets' does not exist. Creating it...")
                 target_group = fs.create_feature_group(
                     name="lahore_air_quality_targets",
                     version=1,
                     primary_key=["timestamp"],
-                    event_time="timestamp",
-                    description="Daily AQI targets for Lahore",
+                    description="Daily aggregated Air Quality Index (AQI) target values for Lahore",
                     features=[
-                        Feature("timestamp", type="timestamp"),
-                        Feature("aqi", type="int"),
+                        Feature("timestamp", type="string"),
+                        Feature("aqi", type="bigint"),
                     ],
-                    online_enabled=True,
+                    online_enabled=False,
                 )
-                time.sleep(10)
-            else:
-                logger.info("Feature group 'lahore_air_quality_targets' already exists.")
-
-            if feature_group is None or target_group is None:
-                raise RuntimeError("Feature group creation failed — cannot continue")
-
+                time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
             # Build DataFrames from the aggregated lists
             features_df = pd.DataFrame(aggregated_features_list)
             target_df = pd.DataFrame(aggregated_target_list)
-
-            # Convert timestamp to datetime BEFORE insert
-            features_df["timestamp"] = pd.to_datetime(features_df["timestamp"])
-            target_df["timestamp"] = pd.to_datetime(target_df["timestamp"])
-
             features_df = features_df.astype({
+                "timestamp": "string",
                 "pm25": "float64",
                 "pm10": "float64",
                 "no2": "float64",
@@ -351,6 +338,7 @@ def backfill_historical_data():
                 "o3": "float64",
             })
             target_df = target_df.astype({
+                "timestamp": "string",
                 "aqi": "int64",
             })
             # Print DataFrame schema
@@ -421,11 +409,6 @@ def fetch_and_process_latest_data():
         # Create DataFrames for latest data
         latest_features_df = pd.DataFrame([latest_features])
         latest_target_df = pd.DataFrame([latest_target])
-
-        # Convert timestamp to datetime BEFORE insert
-        latest_features_df["timestamp"] = pd.to_datetime(latest_features_df["timestamp"])
-        latest_target_df["timestamp"] = pd.to_datetime(latest_target_df["timestamp"])
-
         # Append latest data to existing data (avoid duplicates)
         try:
             existing_features_df = feature_group.read()
@@ -465,13 +448,13 @@ def main():
                 try:
                     logger.info(f"  Attempting {strategy_name} (attempt {attempt+1}/{max_attempts})...")
                     df = read_func()
-                    logger.info(f" Success with {strategy_name}")
+                    logger.info(f"  ✓ Success with {strategy_name}")
                     return df
                 except Exception as e:
                     if "hoodie.properties" in str(e) or "errno 255" in str(e).lower():
-                        logger.warning(f" HDFS metadata error with {strategy_name}")
+                        logger.warning(f"  ✗ HDFS metadata error with {strategy_name}")
                     else:
-                        logger.warning(f" Failed: {str(e)[:80]}")
+                        logger.warning(f"  ✗ Failed: {str(e)[:80]}")
                     
                     # If this is not the last strategy, try next one immediately
                     continue
@@ -483,7 +466,7 @@ def main():
                 time.sleep(wait_time)
         
         # All attempts exhausted
-        logger.error(f" Failed to read {group_name} after {max_attempts} attempts")
+        logger.error(f"  ✗ Failed to read {group_name} after {max_attempts} attempts")
         return None
     
     try:
@@ -495,25 +478,25 @@ def main():
         logger.info("\n[1/4] Connecting to Hopsworks...")
         project = hopsworks.login()
         fs = project.get_feature_store()
-        logger.info(" Connected successfully")
+        logger.info("✓ Connected successfully")
         
         # Step 2: Check if feature groups exist
         logger.info("\n[2/4] Checking for existing feature groups...")
         try:
             features_fg = fs.get_feature_group("lahore_air_quality_features", version=1)
             targets_fg = fs.get_feature_group("lahore_air_quality_targets", version=1)
-            logger.info(" Feature groups found")
+            logger.info("✓ Feature groups found")
             feature_groups_exist = True
         except Exception as e:
-            logger.info(f" Feature groups not found: {e}")
+            logger.info(f"✗ Feature groups not found: {e}")
             feature_groups_exist = False
         
         if not feature_groups_exist:
-            logger.info("\n Feature groups don't exist â†' Running BACKFILL")
+            logger.info("\n Feature groups don't exist → Running BACKFILL")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info(" Historical data backfilled")
+            logger.info("✅ Historical data backfilled")
             return
         
         # Step 3: Try to read existing data
@@ -522,68 +505,68 @@ def main():
         existing_features_df = safe_read_feature_group(features_fg, "features", max_attempts=3)
         
         if existing_features_df is None:
-            logger.warning(" Could not read features after multiple attempts")
-            logger.info("Read failed Running BACKFILL as recovery")
+            logger.warning("\n⚠️  Could not read features after multiple attempts")
+            logger.info("Read failed → Running BACKFILL as recovery")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info(" Recovery backfill executed")
+            logger.info("✅ Recovery backfill executed")
             return
         
         logger.info("Reading targets...")
         existing_targets_df = safe_read_feature_group(targets_fg, "targets", max_attempts=3)
         
         if existing_targets_df is None:
-            logger.warning(" Could not read targets after multiple attempts")
-            logger.info("Read failed Running BACKFILL as recovery")
+            logger.warning("\n⚠️  Could not read targets after multiple attempts")
+            logger.info("Read failed → Running BACKFILL as recovery")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("Recovery backfill executed")
+            logger.info("✅ Recovery backfill executed")
             return
         
         # Step 4: Determine action based on data
-        logger.info(f" Successfully read data:")
+        logger.info(f"\n✓ Successfully read data:")
         logger.info(f"  - Features: {len(existing_features_df)} rows")
         logger.info(f"  - Targets:  {len(existing_targets_df)} rows")
         
         logger.info("\n[4/4] Determining next action...")
         
         if existing_features_df.empty or existing_targets_df.empty:
-            logger.info(" Feature groups are EMPTY â†' Running BACKFILL")
+            logger.info(" Feature groups are EMPTY → Running BACKFILL")
             logger.info("="*70)
             backfill_historical_data()
             logger.info("="*70)
-            logger.info("Historical data backfilled in hopsworks")
+            logger.info("✅ Historical data backfilled in hopsworks")
         else:
-            logger.info(" Data exists â†' Fetching LATEST data only")
+            logger.info(" Data exists → Fetching LATEST data only")
             logger.info("="*70)
             fetch_and_process_latest_data()
             logger.info("="*70)
-            logger.info(" Latest data updated in hopsworks")
+            logger.info("✅ Latest data updated in hopsworks")
             
     except KeyboardInterrupt:
-        logger.info(" Pipeline interrupted by user")
+        logger.info("\n\n⚠️  Pipeline interrupted by user")
         raise
         
     except Exception as e:
         logger.error("\n" + "="*70)
-        logger.error(" PIPELINE FAILED")
+        logger.error("✗ PIPELINE FAILED")
         logger.error("="*70)
         logger.error(f"Error: {str(e)}")
         logger.exception("Full traceback:")
         
         # Emergency fallback
-        logger.info(" Attempting emergency backfill as last resort...")
+        logger.info("\n🆘 Attempting emergency backfill as last resort...")
         try:
             backfill_historical_data()
-            logger.info(" Emergency backfill succeeded")
+            logger.info("✓ Emergency backfill succeeded")
         except Exception as backfill_error:
-            logger.error(f" Emergency backfill also failed: {backfill_error}")
+            logger.error(f"✗ Emergency backfill also failed: {backfill_error}")
             logger.error("Pipeline cannot recover. Manual intervention required.")
             raise
 
 
 if __name__ == "__main__":
     main()
-    logger.info(" Feature Script execution finished!")
+    logger.info("✅ Feature Script execution finished!")
