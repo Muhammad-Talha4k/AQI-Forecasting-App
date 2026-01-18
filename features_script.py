@@ -257,7 +257,7 @@ def aggregate_daily_data(processed_data, day_date):
 def backfill_historical_data():
     # Define the period: last 728 days up to yesterday.
     end_date = datetime.now() - timedelta(days=1)
-    start_date = end_date - timedelta(days=728)
+    start_date = end_date - timedelta(days=1053)
     aggregated_features_list = []
     aggregated_target_list = []
     current_date = start_date
@@ -570,4 +570,5 @@ def main():
 if __name__ == "__main__":
     main()
     logger.info("✅ Feature Script execution finished!")
+
 
