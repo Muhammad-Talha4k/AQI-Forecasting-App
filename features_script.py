@@ -291,9 +291,30 @@ def backfill_historical_data():
             
             try:
                 feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
-                logger.info("Feature group 'lahore_air_quality_features' already exists.")
+                if feature_group is not None:
+                    logger.info("Feature group 'lahore_air_quality_features' already exists.")
+                else:
+                    logger.info("Feature group 'lahore_air_quality_features' returned None. Creating it...")
+                    feature_group = fs.create_feature_group(
+                        name="lahore_air_quality_features",
+                        version=1,
+                        primary_key=["timestamp"],
+                        description="Daily aggregated air quality data for Lahore from OpenWeatherMap",
+                        features=[
+                            Feature("timestamp", type="string"),
+                            Feature("pm25", type="double"),
+                            Feature("pm10", type="double"),
+                            Feature("no2", type="double"),
+                            Feature("so2", type="double"),
+                            Feature("co", type="double"),
+                            Feature("o3", type="double"),
+                        ],
+                        online_enabled=False,
+                    )
+                    logger.info("Feature group 'lahore_air_quality_features' created successfully.")
+                    time.sleep(30)
             except Exception as e:
-                logger.info(f"Feature group 'lahore_air_quality_features' does not exist. Creating it... Error: {e}")
+                logger.info(f"Feature group 'lahore_air_quality_features' creation error: {e}")
                 feature_group = fs.create_feature_group(
                     name="lahore_air_quality_features",
                     version=1,
@@ -310,14 +331,29 @@ def backfill_historical_data():
                     ],
                     online_enabled=False,
                 )
-                logger.info("Feature group 'lahore_air_quality_features' created successfully.")
-                time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
+                time.sleep(30)
             
             try:
                 target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
-                logger.info("Feature group 'lahore_air_quality_targets' already exists.")
+                if target_group is not None:
+                    logger.info("Feature group 'lahore_air_quality_targets' already exists.")
+                else:
+                    logger.info("Feature group 'lahore_air_quality_targets' returned None. Creating it...")
+                    target_group = fs.create_feature_group(
+                        name="lahore_air_quality_targets",
+                        version=1,
+                        primary_key=["timestamp"],
+                        description="Daily aggregated Air Quality Index (AQI) target values for Lahore",
+                        features=[
+                            Feature("timestamp", type="string"),
+                            Feature("aqi", type="bigint"),
+                        ],
+                        online_enabled=False,
+                    )
+                    logger.info("Feature group 'lahore_air_quality_targets' created successfully.")
+                    time.sleep(30)
             except Exception as e:
-                logger.info(f"Feature group 'lahore_air_quality_targets' does not exist. Creating it... Error: {e}")
+                logger.info(f"Feature group 'lahore_air_quality_targets' creation error: {e}")
                 target_group = fs.create_feature_group(
                     name="lahore_air_quality_targets",
                     version=1,
@@ -329,12 +365,7 @@ def backfill_historical_data():
                     ],
                     online_enabled=False,
                 )
-                logger.info("Feature group 'lahore_air_quality_targets' created successfully.")
-                time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
-            
-            # Safety check: ensure both feature groups exist
-            if feature_group is None or target_group is None:
-                raise RuntimeError("Failed to create or retrieve feature groups")
+                time.sleep(30)
             # Build DataFrames from the aggregated lists
             features_df = pd.DataFrame(aggregated_features_list)
             target_df = pd.DataFrame(aggregated_target_list)
