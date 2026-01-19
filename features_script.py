@@ -286,11 +286,14 @@ def backfill_historical_data():
             project = hopsworks.login()
             fs = project.get_feature_store()
             # Ensure the feature groups exist (or create them)
+            feature_group = None
+            target_group = None
+            
             try:
                 feature_group = fs.get_feature_group("lahore_air_quality_features", version=1)
                 logger.info("Feature group 'lahore_air_quality_features' already exists.")
-            except:
-                logger.info("Feature group 'lahore_air_quality_features' does not exist. Creating it...")
+            except Exception as e:
+                logger.info(f"Feature group 'lahore_air_quality_features' does not exist. Creating it... Error: {e}")
                 feature_group = fs.create_feature_group(
                     name="lahore_air_quality_features",
                     version=1,
@@ -307,12 +310,14 @@ def backfill_historical_data():
                     ],
                     online_enabled=False,
                 )
+                logger.info("Feature group 'lahore_air_quality_features' created successfully.")
                 time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
+            
             try:
                 target_group = fs.get_feature_group("lahore_air_quality_targets", version=1)
                 logger.info("Feature group 'lahore_air_quality_targets' already exists.")
-            except:
-                logger.info("Feature group 'lahore_air_quality_targets' does not exist. Creating it...")
+            except Exception as e:
+                logger.info(f"Feature group 'lahore_air_quality_targets' does not exist. Creating it... Error: {e}")
                 target_group = fs.create_feature_group(
                     name="lahore_air_quality_targets",
                     version=1,
@@ -324,7 +329,12 @@ def backfill_historical_data():
                     ],
                     online_enabled=False,
                 )
+                logger.info("Feature group 'lahore_air_quality_targets' created successfully.")
                 time.sleep(30)  # Wait for 30 seconds after creating the Feature Group
+            
+            # Safety check: ensure both feature groups exist
+            if feature_group is None or target_group is None:
+                raise RuntimeError("Failed to create or retrieve feature groups")
             # Build DataFrames from the aggregated lists
             features_df = pd.DataFrame(aggregated_features_list)
             target_df = pd.DataFrame(aggregated_target_list)
@@ -346,15 +356,10 @@ def backfill_historical_data():
             logger.info(features_df.dtypes)
             logger.info("Targets DataFrame Schema:")
             logger.info(target_df.dtypes)
-            # Print Feature Group schema
-            logger.info("Feature Group Schema:")
-            logger.info(feature_group.schema)
-            logger.info("Target Group Schema:")
-            logger.info(target_group.schema)
             # Print the first few rows of the DataFrames
-            logger.info("Features DataFrame:")
+            logger.info("Features DataFrame (first 5 rows):")
             logger.info(features_df.head())
-            logger.info("Targets DataFrame:")
+            logger.info("Targets DataFrame (first 5 rows):")
             logger.info(target_df.head())
             # Check if the feature group is empty
             try:
